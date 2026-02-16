@@ -1,0 +1,27 @@
+schema_version: '1.0'
+mcp_name: 'UK Law MCP'
+jurisdiction: 'GB'
+
+sources:
+  - name: 'legislation.gov.uk'
+    authority: 'The National Archives'
+    official_portal: 'https://www.legislation.gov.uk'
+    canonical_identifier: 'Short title + year (e.g., "Data Protection Act 2018")'
+    retrieval_method: 'API'
+    api_documentation: 'https://www.legislation.gov.uk/developer'
+    update_frequency: 'daily'
+    last_ingested: '2026-02-16'
+    license_or_terms:
+      type: 'Open Government Licence v3.0'
+      url: 'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/'
+      summary: 'Free to copy, publish, distribute, and adapt with attribution'
+    coverage:
+      scope: 'UK Acts of Parliament, Statutory Instruments, retained EU law'
+      limitations: 'Cybersecurity and data protection scope only for initial release'
+    languages:
+      - 'en'
+
+data_freshness:
+  automated_checks: true
+  check_frequency: 'daily'
+  last_verified: '2026-02-16'
