@@ -1,0 +1,6 @@
+data/database.db
+data/seed/
+data/source/
+*.log
+.claude
+.serena
