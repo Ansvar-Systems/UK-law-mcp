@@ -57,6 +57,22 @@ interface ProvisionDedupStats {
   conflicting_duplicates: number;
 }
 
+type EUDocumentType = 'directive' | 'regulation';
+type EUCommunity = 'EU' | 'EC' | 'EEC' | 'Euratom';
+type EUReferenceType = 'implements' | 'references';
+
+interface ExtractedEUReference {
+  type: EUDocumentType;
+  community: EUCommunity;
+  year: number;
+  number: number;
+  euDocumentId: string;
+  euArticle: string | null;
+  fullCitation: string;
+  referenceContext: string;
+  referenceType: EUReferenceType;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Database schema
 // ─────────────────────────────────────────────────────────────────────────────
@@ -289,6 +305,113 @@ function dedupeProvisions(provisions: ProvisionSeed[]): { deduped: ProvisionSeed
   };
 }
 
+function normalizeEuYear(rawYear: string): number {
+  const parsed = Number.parseInt(rawYear, 10);
+  if (Number.isNaN(parsed)) return 0;
+  if (rawYear.length === 2) {
+    return parsed >= 50 ? 1900 + parsed : 2000 + parsed;
+  }
+  return parsed;
+}
+
+function buildEuDocumentId(type: EUDocumentType, year: number, number: number): string {
+  return `${type}:${year}/${number}`;
+}
+
+function inferReferenceType(context: string): EUReferenceType {
+  return /\b(implement|implemented|implements|transpos|supplement|complies?|gives effect)\b/i.test(context)
+    ? 'implements'
+    : 'references';
+}
+
+function extractArticleReference(context: string): string | null {
+  const match = context.match(/\bArticle\s+(\d+[A-Za-z]?(?:\(\d+\))?)/i);
+  return match ? match[1] : null;
+}
+
+function normalizeCommunity(value: string | undefined): EUCommunity {
+  if (!value) return 'EU';
+  const upper = value.toUpperCase();
+  if (upper === 'EC') return 'EC';
+  if (upper === 'EEC') return 'EEC';
+  if (upper === 'EURATOM') return 'Euratom';
+  return 'EU';
+}
+
+function extractEuReferences(text: string): ExtractedEUReference[] {
+  if (!text || text.trim().length === 0) {
+    return [];
+  }
+
+  const refs: ExtractedEUReference[] = [];
+  const seen = new Set<string>();
+
+  const patterns: RegExp[] = [
+    /\b(Regulation|Directive)\s*\((EU|EC|EEC|Euratom)\)\s*(?:No\.?\s*)?(\d{2,4})\/(\d{1,4})\b/gi,
+    /\b(Regulation|Directive)\s*(?:No\.?\s*)?(\d{2,4})\/(\d{1,4})\/(EU|EC|EEC|Euratom)\b/gi,
+    /\b(Regulation|Directive)\s*(?:No\.?\s*)?(\d{2,4})\/(\d{1,4})\b/gi,
+  ];
+
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(text)) !== null) {
+      const type = match[1].toLowerCase() as EUDocumentType;
+
+      let rawYear: string;
+      let rawNumber: string;
+      let communityRaw: string | undefined;
+
+      if (pattern === patterns[0]) {
+        communityRaw = match[2];
+        rawYear = match[3];
+        rawNumber = match[4];
+      } else if (pattern === patterns[1]) {
+        rawYear = match[2];
+        rawNumber = match[3];
+        communityRaw = match[4];
+      } else {
+        rawYear = match[2];
+        rawNumber = match[3];
+        communityRaw = undefined;
+      }
+
+      const year = normalizeEuYear(rawYear);
+      const number = Number.parseInt(rawNumber, 10);
+      if (year <= 0 || Number.isNaN(number) || number <= 0) {
+        continue;
+      }
+
+      const community = normalizeCommunity(communityRaw);
+      const start = Math.max(0, match.index - 120);
+      const end = Math.min(text.length, match.index + match[0].length + 120);
+      const referenceContext = text.slice(start, end).replace(/\s+/g, ' ').trim();
+      const euArticle = extractArticleReference(referenceContext);
+      const referenceType = inferReferenceType(referenceContext);
+      const euDocumentId = buildEuDocumentId(type, year, number);
+
+      const dedupeKey = `${euDocumentId}:${euArticle ?? ''}`;
+      if (seen.has(dedupeKey)) {
+        continue;
+      }
+      seen.add(dedupeKey);
+
+      refs.push({
+        type,
+        community,
+        year,
+        number,
+        euDocumentId,
+        euArticle,
+        fullCitation: match[0],
+        referenceContext,
+        referenceType,
+      });
+    }
+  }
+
+  return refs;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Build
 // ─────────────────────────────────────────────────────────────────────────────
@@ -329,6 +452,22 @@ function buildDatabase(): void {
     VALUES (?, ?, ?, ?, ?)
   `);
 
+  const insertEuDocument = db.prepare(`
+    INSERT OR IGNORE INTO eu_documents
+      (id, type, year, number, community, title, short_name, url_eur_lex, description)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertEuReference = db.prepare(`
+    INSERT INTO eu_references
+      (
+        source_type, source_id, document_id, provision_id, eu_document_id, eu_article,
+        reference_type, reference_context, full_citation, is_primary_implementation,
+        implementation_status, last_verified
+      )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
   // Load seed files
   if (!fs.existsSync(SEED_DIR)) {
     console.log(`No seed directory at ${SEED_DIR} — creating empty database.`);
@@ -351,6 +490,9 @@ function buildDatabase(): void {
   let totalDuplicateRefs = 0;
   let totalConflictingDuplicates = 0;
   let emptyDocs = 0;
+  let totalEuDocuments = 0;
+  let totalEuReferences = 0;
+  const primaryImplementationByDocument = new Set<string>();
 
   const loadAll = db.transaction(() => {
     for (const file of seedFiles) {
@@ -389,7 +531,7 @@ function buildDatabase(): void {
       }
 
       for (const prov of deduped) {
-        insertProvision.run(
+        const insertResult = insertProvision.run(
           seed.id,
           prov.provision_ref,
           prov.chapter ?? null,
@@ -399,6 +541,65 @@ function buildDatabase(): void {
           prov.metadata ? JSON.stringify(prov.metadata) : null,
         );
         totalProvisions++;
+
+        const provisionId = Number(insertResult.lastInsertRowid);
+        const extractedRefs = extractEuReferences(prov.content);
+        if (extractedRefs.length > 0) {
+          const sourceId = `${seed.id}:${prov.provision_ref}`;
+          const lastVerified = new Date().toISOString();
+
+          for (const ref of extractedRefs) {
+            const eurLexType = ref.type === 'regulation' ? 'reg' : 'dir';
+            const eurLexUrl = `https://eur-lex.europa.eu/eli/${eurLexType}/${ref.year}/${ref.number}/oj`;
+            const shortName = `${ref.type === 'regulation' ? 'Regulation' : 'Directive'} ${ref.year}/${ref.number}`;
+
+            const euInsert = insertEuDocument.run(
+              ref.euDocumentId,
+              ref.type,
+              ref.year,
+              ref.number,
+              ref.community,
+              null,
+              shortName,
+              eurLexUrl,
+              'Auto-extracted from UK statute text',
+            );
+            if (euInsert.changes > 0) {
+              totalEuDocuments++;
+            }
+
+            const primaryKey = `${seed.id}:${ref.euDocumentId}`;
+            const isPrimary =
+              ref.referenceType === 'implements' && !primaryImplementationByDocument.has(primaryKey)
+                ? 1
+                : 0;
+            if (isPrimary === 1) {
+              primaryImplementationByDocument.add(primaryKey);
+            }
+
+            try {
+              const refInsert = insertEuReference.run(
+                'provision',
+                sourceId,
+                seed.id,
+                provisionId,
+                ref.euDocumentId,
+                ref.euArticle,
+                ref.referenceType,
+                ref.referenceContext,
+                ref.fullCitation,
+                isPrimary,
+                isPrimary === 1 ? 'complete' : 'unknown',
+                lastVerified,
+              );
+              if (refInsert.changes > 0) {
+                totalEuReferences++;
+              }
+            } catch {
+              // Ignore duplicate references that violate UNIQUE constraints.
+            }
+          }
+        }
       }
 
       for (const def of seed.definitions ?? []) {
@@ -439,7 +640,7 @@ function buildDatabase(): void {
   const size = fs.statSync(DB_PATH).size;
   console.log(
     `\nBuild complete: ${totalDocs} documents, ${totalProvisions} provisions, ` +
-    `${totalDefs} definitions`
+    `${totalDefs} definitions, ${totalEuDocuments} EU documents, ${totalEuReferences} EU references`
   );
   if (emptyDocs > 0) {
     console.log(`  ${emptyDocs} documents with no provisions (AKN unavailable).`);

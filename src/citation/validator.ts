@@ -43,13 +43,43 @@ export function validateCitation(db: Database, citation: string): ValidationResu
   // Check provision existence
   let provisionExists = false;
   if (parsed.section) {
+    const pinpoint = [
+      parsed.section,
+      parsed.subsection ? `(${parsed.subsection})` : '',
+      parsed.paragraph ? `(${parsed.paragraph})` : '',
+    ].join('');
+    const provisionRef = `s${pinpoint}`;
+    const allowPrefixMatch = parsed.subsection == null && parsed.paragraph == null;
+
     const prov = db.prepare(
-      "SELECT 1 FROM legal_provisions WHERE document_id = ? AND section = ?"
-    ).get(doc.id, parsed.section);
+      `SELECT 1
+       FROM legal_provisions
+       WHERE document_id = ?
+         AND (
+           provision_ref = ?
+           OR section = ?
+           OR REPLACE(REPLACE(section, '((', '('), '))', ')') = ?
+           OR (
+             ? = 1
+             AND (
+               provision_ref LIKE ?
+               OR REPLACE(REPLACE(section, '((', '('), '))', ')') LIKE ?
+             )
+           )
+         )`
+    ).get(
+      doc.id,
+      provisionRef,
+      pinpoint,
+      pinpoint,
+      allowPrefixMatch ? 1 : 0,
+      `${provisionRef}(%`,
+      `${pinpoint}(%`,
+    );
     provisionExists = !!prov;
 
     if (!provisionExists) {
-      warnings.push(`Section ${parsed.section} not found in ${doc.title}`);
+      warnings.push(`Section ${pinpoint} not found in ${doc.title}`);
     }
   }
 

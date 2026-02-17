@@ -1,0 +1,94 @@
+name: Daily Update Check
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-updates:
+    runs-on: ubuntu-latest
+    outputs:
+      updates_found: ${{ steps.check.outputs.updates_found }}
+      summary: ${{ steps.check.outputs.summary }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+
+      - name: Run update checker
+        id: check
+        run: |
+          set +e
+          npm run check-updates > check-updates.log 2>&1
+          STATUS=$?
+          set -e
+
+          if [ "$STATUS" -eq 1 ]; then
+            echo "updates_found=true" >> "$GITHUB_OUTPUT"
+            echo "summary<<EOF" >> "$GITHUB_OUTPUT"
+            tail -n 80 check-updates.log >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          elif [ "$STATUS" -eq 0 ]; then
+            echo "updates_found=false" >> "$GITHUB_OUTPUT"
+            echo "summary=No updates found" >> "$GITHUB_OUTPUT"
+          else
+            echo "updates_found=false" >> "$GITHUB_OUTPUT"
+            echo "summary=Update check failed (exit $STATUS)" >> "$GITHUB_OUTPUT"
+          fi
+
+          cat check-updates.log
+
+      - name: Upload checker output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-updates-log
+          path: check-updates.log
+          retention-days: 14
+
+  create-issue:
+    runs-on: ubuntu-latest
+    needs: check-updates
+    if: needs.check-updates.outputs.updates_found == 'true'
+
+    steps:
+      - name: Create update issue
+        uses: actions/github-script@v7
+        env:
+          SUMMARY: ${{ needs.check-updates.outputs.summary }}
+        with:
+          script: |
+            const title = `UK law data updates detected — ${new Date().toISOString().split('T')[0]}`;
+            const body = [
+              'Automated update check found upstream changes.',
+              '',
+              '```',
+              process.env.SUMMARY || 'No details',
+              '```',
+              '',
+              'Suggested next steps:',
+              '- Run `npm run ingest`',
+              '- Run `npm run build:db`',
+              '- Run `npm run validate`',
+              '- Publish a new release with updated `database.db.gz`',
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['data-update', 'automated'],
+            });

@@ -1,0 +1,67 @@
+name: Drift Detection
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift-detect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+
+      - name: Run drift detector
+        id: drift
+        run: |
+          set +e
+          npm run drift:detect > drift-detect.log 2>&1
+          STATUS=$?
+          set -e
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          cat drift-detect.log
+
+      - name: Upload drift log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-detect-log
+          path: drift-detect.log
+          retention-days: 14
+
+      - name: Create issue when drift is detected
+        if: steps.drift.outputs.status == '2'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Upstream drift detected — ${new Date().toISOString().split('T')[0]}`,
+              body: [
+                'Automated drift detection found hash mismatches against upstream sources.',
+                '',
+                'Run `npm run drift:detect` locally for full details and refresh `fixtures/golden-hashes.json` when validated.'
+              ].join('\n'),
+              labels: ['data-drift', 'automated'],
+            });
+
+      - name: Fail workflow on drift or detector errors
+        if: steps.drift.outputs.status != '0'
+        run: |
+          echo "drift-detect exited with status ${{ steps.drift.outputs.status }}"
+          exit 1

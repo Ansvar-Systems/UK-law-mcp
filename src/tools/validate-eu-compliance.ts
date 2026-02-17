@@ -34,6 +34,19 @@ export async function validateEUCompliance(
     throw new Error(`Document "${input.document_id}" not found in database`);
   }
 
+  let provisionId: number | null = null;
+  if (input.provision_ref?.trim()) {
+    const row = db.prepare(
+      'SELECT id FROM legal_provisions WHERE document_id = ? AND (provision_ref = ? OR section = ?) LIMIT 1'
+    ).get(resolvedId, input.provision_ref, input.provision_ref) as { id: number } | undefined;
+
+    if (!row) {
+      throw new Error(`Provision "${input.provision_ref}" not found in ${resolvedId}`);
+    }
+
+    provisionId = row.id;
+  }
+
   let sql = `
     SELECT ed.id, ed.type, ed.title, er.reference_type, er.is_primary_implementation
     FROM eu_documents ed
@@ -41,6 +54,11 @@ export async function validateEUCompliance(
     WHERE er.document_id = ?
   `;
   const params: (string | number)[] = [resolvedId];
+
+  if (provisionId != null) {
+    sql += ` AND er.provision_id = ?`;
+    params.push(provisionId);
+  }
 
   if (input.eu_document_id) {
     sql += ` AND ed.id = ?`;
@@ -57,15 +75,21 @@ export async function validateEUCompliance(
   const warnings: string[] = [];
   const recommendations: string[] = [];
 
+  const primaryCount = rows.filter((row) => row.is_primary_implementation === 1).length;
+
   if (rows.length === 0) {
     recommendations.push(
       'No EU references found. If this statute implements EU law, consider adding EU references.'
     );
+  } else if (primaryCount === 0) {
+    warnings.push('EU references exist, but none are marked as primary implementation.');
+    recommendations.push('Review reference quality and mark the primary implementation links.');
   }
 
   const status: EUComplianceResult['compliance_status'] =
     rows.length === 0 ? 'not_applicable' :
-    warnings.length > 0 ? 'unclear' : 'compliant';
+    primaryCount > 0 ? 'compliant' :
+    'partial';
 
   return {
     results: {

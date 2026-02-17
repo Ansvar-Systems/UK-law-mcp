@@ -15,7 +15,7 @@ import { registerTools } from '../src/tools/registry.js';
 // Server identity
 // ---------------------------------------------------------------------------
 
-const SERVER_NAME = 'uk-law-mcp';
+const SERVER_NAME = 'uk-legal-citations';
 const SERVER_VERSION = '1.0.0';
 
 // ---------------------------------------------------------------------------
@@ -29,9 +29,13 @@ const TMP_DB_LOCK = '/tmp/database.db.lock';
 const GITHUB_REPO = 'Ansvar-Systems/UK-law-mcp';
 const RELEASE_TAG = `v${SERVER_VERSION}`;
 const ASSET_NAME = 'database.db.gz';
+const DEFAULT_RELEASE_URL =
+  `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/${ASSET_NAME}`;
 
 let db: InstanceType<typeof Database> | null = null;
+let resolvedDbPath = TMP_DB;
 let dbReady = false;
+let dbReadyPromise: Promise<void> | null = null;
 
 function httpsGet(url: string): Promise<IncomingMessage> {
   return new Promise((resolve, reject) => {
@@ -41,9 +45,7 @@ function httpsGet(url: string): Promise<IncomingMessage> {
   });
 }
 
-async function downloadDatabase(): Promise<void> {
-  const url = `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/${ASSET_NAME}`;
-
+async function downloadDatabase(url: string): Promise<void> {
   let response = await httpsGet(url);
 
   // Follow up to 5 redirects (GitHub redirects to S3)
@@ -69,42 +71,72 @@ async function downloadDatabase(): Promise<void> {
   const out = createWriteStream(TMP_DB_TMP);
   await pipeline(response, gunzip, out);
   renameSync(TMP_DB_TMP, TMP_DB);
+  resolvedDbPath = TMP_DB;
 }
 
-async function ensureDatabase(): Promise<void> {
-  if (dbReady) return;
+async function initializeDatabase(): Promise<void> {
+  if (dbReady) {
+    return;
+  }
 
   // Clean stale lock files from previous invocations
   if (existsSync(TMP_DB_LOCK)) {
     rmSync(TMP_DB_LOCK, { recursive: true, force: true });
   }
 
-  if (!existsSync(TMP_DB)) {
-    const envDb = process.env.UK_LAW_DB_PATH;
-    if (envDb && existsSync(envDb)) {
-      // Local dev: use env-specified DB directly, no download
-      dbReady = true;
-      return;
-    }
-
-    // Check for bundled DB (local dev fallback)
-    const bundledDb = join(process.cwd(), 'data', 'database.db');
-    if (existsSync(bundledDb)) {
-      const { copyFileSync } = await import('fs');
-      copyFileSync(bundledDb, TMP_DB);
-    } else {
-      console.log('[uk-law-mcp] Downloading database from GitHub Releases...');
-      await downloadDatabase();
-      console.log('[uk-law-mcp] Database ready');
-    }
+  const envDb = process.env.UK_LAW_DB_PATH;
+  if (envDb && existsSync(envDb)) {
+    resolvedDbPath = envDb;
+    dbReady = true;
+    return;
   }
+
+  if (existsSync(TMP_DB)) {
+    resolvedDbPath = TMP_DB;
+    dbReady = true;
+    return;
+  }
+
+  // Local fallback if a bundled DB is available.
+  const bundledDb = join(process.cwd(), 'data', 'database.db');
+  if (existsSync(bundledDb)) {
+    const { copyFileSync } = await import('fs');
+    copyFileSync(bundledDb, TMP_DB);
+    resolvedDbPath = TMP_DB;
+    dbReady = true;
+    return;
+  }
+
+  const downloadUrl = process.env.UK_LAW_DB_URL ?? DEFAULT_RELEASE_URL;
+  console.log(`[${SERVER_NAME}] Downloading database from ${downloadUrl}`);
+  await downloadDatabase(downloadUrl);
+  console.log(`[${SERVER_NAME}] Database download complete`);
 
   dbReady = true;
 }
 
+async function ensureDatabase(): Promise<void> {
+  if (dbReady) {
+    return;
+  }
+
+  if (!dbReadyPromise) {
+    dbReadyPromise = initializeDatabase().finally(() => {
+      if (!dbReady) {
+        dbReadyPromise = null;
+      }
+    });
+  }
+
+  await dbReadyPromise;
+}
+
 function getDatabase(): InstanceType<typeof Database> {
   if (!db) {
-    db = new Database(TMP_DB, { readonly: true });
+    if (!existsSync(resolvedDbPath)) {
+      throw new Error(`Resolved database path does not exist: ${resolvedDbPath}`);
+    }
+    db = new Database(resolvedDbPath, { readonly: true });
     db.pragma('foreign_keys = ON');
   }
   return db;

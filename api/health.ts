@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 const SERVER_NAME = 'uk-legal-citations';
 const SERVER_VERSION = '1.0.0';
 const REPO_URL = 'https://github.com/Ansvar-Systems/UK-law-mcp';
+const FRESHNESS_MAX_DAYS = 30;
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   const url = new URL(req.url ?? '/', `https://${req.headers.host}`);
@@ -28,7 +29,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     version: SERVER_VERSION,
     uptime_seconds: Math.floor(process.uptime()),
     data_freshness: {
-      max_age_days: 30,
+      max_age_days: FRESHNESS_MAX_DAYS,
       note: 'Serving bundled free-tier database',
     },
     capabilities: ['statutes', 'eu_cross_references'],

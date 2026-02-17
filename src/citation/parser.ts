@@ -13,7 +13,10 @@ import type { ParsedCitation } from '../types/index.js';
 const FULL_CITATION = /^(?:Section|s\.?)\s+(\d+(?:\(\d+\))*(?:\([a-z]\))*)\s*,?\s+(.+?)\s+(\d{4})$/i;
 
 // Short citation: "s. 3 DPA 2018"
-const SHORT_CITATION = /^s\.?\s+(\d+(?:\(\d+\))*(?:\([a-z]\))*)\s+([A-Z][A-Z0-9&\s]*?)\s+(\d{4})$/;
+const SHORT_CITATION = /^s\.?\s+(\d+(?:\(\d+\))*(?:\([a-z]\))*)\s+(.+?)\s+(\d{4})$/i;
+
+// Trailing section citation: "Data Protection Act 2018, s. 3"
+const TRAILING_SECTION = /^(.+?)\s+(\d{4})\s*,?\s*(?:Section|s\.?)\s*(\d+(?:\(\d+\))*(?:\([a-z]\))*)$/i;
 
 // Section with subsection: "s. 3(1)(a)"
 const SECTION_REF = /^(\d+)(?:\((\d+)\))?(?:\(([a-z])\))?$/;
@@ -29,6 +32,11 @@ export function parseCitation(citation: string): ParsedCitation {
   match = trimmed.match(SHORT_CITATION);
   if (match) {
     return parseSection(match[1], match[2], parseInt(match[3], 10), 'statute');
+  }
+
+  match = trimmed.match(TRAILING_SECTION);
+  if (match) {
+    return parseSection(match[3], match[1], parseInt(match[2], 10), 'statute');
   }
 
   return {
