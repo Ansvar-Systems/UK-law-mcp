@@ -47,6 +47,10 @@ function safeMetaValue(db: Database, key: string): string {
 }
 
 export async function listSources(db: Database): Promise<ToolResponse<ListSourcesResult>> {
+  const documentCount = safeCount(db, 'SELECT COUNT(*) as count FROM legal_documents');
+  const provisionCount = safeCount(db, 'SELECT COUNT(*) as count FROM legal_provisions');
+  const euDocumentCount = safeCount(db, 'SELECT COUNT(*) as count FROM eu_documents');
+
   return {
     results: {
       jurisdiction: 'United Kingdom (GB)',
@@ -72,13 +76,13 @@ export async function listSources(db: Database): Promise<ToolResponse<ListSource
         tier: safeMetaValue(db, 'tier'),
         schema_version: safeMetaValue(db, 'schema_version'),
         built_at: safeMetaValue(db, 'built_at'),
-        document_count: safeCount(db, 'SELECT COUNT(*) as count FROM legal_documents'),
-        provision_count: safeCount(db, 'SELECT COUNT(*) as count FROM legal_provisions'),
-        eu_document_count: safeCount(db, 'SELECT COUNT(*) as count FROM eu_documents'),
+        document_count: documentCount,
+        provision_count: provisionCount,
+        eu_document_count: euDocumentCount,
       },
       limitations: [
-        'Covers 3,243 UK Acts of Parliament. Statutory Instruments (secondary legislation) are not yet included.',
-        'Provisions with sub-paragraphs (e.g., s1(1)(a)(b)) store the stem text at the subsection level; sub-paragraphs are separate provisions.',
+        `Covers ${documentCount.toLocaleString()} UK Acts of Parliament. Statutory Instruments (secondary legislation) are not yet included.`,
+        'Provisions with sub-paragraphs (e.g., s1(1)(a)(b)) store the introductory text at the subsection level; sub-paragraphs are separate provisions.',
         'EU cross-references are auto-extracted from statute text and may not capture all indirect references.',
         'Case law and preparatory works (Hansard) are not yet included.',
         'Always verify against official legislation.gov.uk publications when legal certainty is required.',
