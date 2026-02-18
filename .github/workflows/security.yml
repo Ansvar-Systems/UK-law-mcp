@@ -15,13 +15,15 @@ concurrency:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   # Layer 1: CodeQL — static analysis for JavaScript/TypeScript
   codeql:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
 
@@ -42,6 +44,9 @@ jobs:
   semgrep:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
     container:
       image: semgrep/semgrep
     steps:
@@ -63,6 +68,9 @@ jobs:
   trivy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
 
