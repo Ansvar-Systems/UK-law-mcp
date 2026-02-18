@@ -1,6 +1,6 @@
 {
   "name": "@ansvar/uk-law-mcp",
-  "mcpName": "uk-law-mcp",
+  "mcpName": "io.github.Ansvar-Systems/uk-law-mcp",
   "version": "1.0.0",
   "description": "UK Law MCP — English legislation via Model Context Protocol",
   "type": "module",
@@ -70,5 +70,10 @@
   "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
+  },
+  "overrides": {
+    "path-to-regexp": "^8.0.0",
+    "undici": "^7.0.0",
+    "ajv": "^8.18.0"
   }
 }
