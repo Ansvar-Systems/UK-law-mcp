@@ -5,6 +5,10 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch:
 
+concurrency:
+  group: check-updates
+  cancel-in-progress: true
+
 permissions:
   contents: read
   issues: write
@@ -12,6 +16,7 @@ permissions:
 jobs:
   check-updates:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       updates_found: ${{ steps.check.outputs.updates_found }}
       summary: ${{ steps.check.outputs.summary }}

@@ -1,0 +1,53 @@
+{
+  "name": "uk-law-mcp",
+  "version": "1.0.0",
+  "description": "UK primary legislation (3,243+ acts, 514K+ provisions) from legislation.gov.uk — search, retrieve, validate citations, check currency, and cross-reference EU law via Model Context Protocol.",
+  "repository": "https://github.com/Ansvar-Systems/UK-law-mcp",
+  "homepage": "https://github.com/Ansvar-Systems/UK-law-mcp#readme",
+  "author": "Ansvar Systems AB <hello@ansvar.ai>",
+  "license": "Apache-2.0",
+  "categories": ["legal", "compliance", "government", "reference"],
+  "tags": [
+    "uk-law",
+    "united-kingdom",
+    "legislation",
+    "acts-of-parliament",
+    "statutory-instruments",
+    "data-protection",
+    "cybersecurity",
+    "eu-cross-references",
+    "legal-citations",
+    "compliance"
+  ],
+  "transport": {
+    "stdio": {
+      "command": "npx",
+      "args": ["-y", "@ansvar/uk-law-mcp"]
+    },
+    "streamableHttp": {
+      "url": "https://uk-law-mcp.vercel.app/mcp"
+    }
+  },
+  "tools": [
+    "search_legislation",
+    "get_provision",
+    "list_sources",
+    "validate_citation",
+    "build_legal_stance",
+    "format_citation",
+    "check_currency",
+    "get_eu_basis",
+    "get_uk_implementations",
+    "search_eu_implementations",
+    "get_provision_eu_basis",
+    "validate_eu_compliance",
+    "about"
+  ],
+  "data": {
+    "jurisdiction": "GB",
+    "source": "legislation.gov.uk",
+    "authority": "The National Archives",
+    "license": "Open Government Licence v3.0",
+    "freshness": "daily automated checks"
+  }
+}

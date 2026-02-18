@@ -154,7 +154,11 @@ describe(`Contract tests: ${fixture.mcp_name}`, () => {
       { name: 'uk-law-test', version: '0.0.0' },
       { capabilities: { tools: {} } },
     );
-    registerTools(server, db);
+    registerTools(server, db, {
+      version: '1.0.0',
+      fingerprint: 'contract-test',
+      dbBuilt: new Date().toISOString(),
+    });
 
     mcpClient = new Client({ name: 'test-client', version: '0.0.0' }, { capabilities: {} });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

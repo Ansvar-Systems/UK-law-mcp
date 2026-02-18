@@ -121,10 +121,27 @@ export interface ParsedAct {
 }
 
 /**
+ * Pre-process AKN XML to flatten inline reference elements into plain text.
+ *
+ * legislation.gov.uk AKN uses inline `<ref>` elements for cross-references:
+ *   <p>Most processing is subject to the <ref href="...">UK GDPR</ref>.</p>
+ *
+ * fast-xml-parser cannot preserve mixed-content ordering, so these refs end up
+ * displaced. We flatten them to plain text before parsing.
+ */
+function flattenInlineRefs(xml: string): string {
+  // Replace <ref href="...">text</ref> with just "text"
+  // Also handle self-closing <ref .../> (strip entirely)
+  return xml
+    .replace(/<ref\b[^>]*\/>/g, '')
+    .replace(/<ref\b[^>]*>([\s\S]*?)<\/ref>/g, '$1');
+}
+
+/**
  * Parse an Akoma Ntoso XML document into a structured act with provisions.
  */
 export function parseAknXml(xml: string, year: number, actNumber: number, actTitle: string): ParsedAct {
-  const parsed = parser.parse(xml);
+  const parsed = parser.parse(flattenInlineRefs(xml));
 
   // Navigate to the body — AKN structure: akomaNtoso > act > body
   const akomaNtoso = parsed.akomaNtoso ?? parsed['akomaNtoso'] ?? parsed;
