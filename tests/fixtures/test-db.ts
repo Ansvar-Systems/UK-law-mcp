@@ -102,6 +102,23 @@ CREATE TABLE db_metadata (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- Premium tier: provision version tracking
+CREATE TABLE provision_versions (
+  id INTEGER PRIMARY KEY,
+  provision_id INTEGER NOT NULL,
+  body_text TEXT NOT NULL,
+  effective_date TEXT,
+  superseded_date TEXT,
+  scraped_at TEXT NOT NULL,
+  change_summary TEXT,
+  diff_from_previous TEXT,
+  source_url TEXT,
+  FOREIGN KEY (provision_id) REFERENCES legal_provisions(id)
+);
+
+CREATE INDEX idx_pv_provision ON provision_versions(provision_id);
+CREATE INDEX idx_pv_effective ON provision_versions(effective_date);
 `;
 
 interface TempDbMeta {
@@ -284,6 +301,55 @@ export function createTestDatabase(): InstanceType<typeof Database> {
     insertMeta.run('builder', 'tests/fixtures/test-db.ts');
     insertMeta.run('jurisdiction', 'GB');
     insertMeta.run('source', 'legislation.gov.uk');
+
+    // Premium: sample provision version history
+    const insertVersion = db.prepare(`
+      INSERT INTO provision_versions
+      (provision_id, body_text, effective_date, superseded_date, scraped_at, change_summary, diff_from_previous, source_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    // DPA 2018 s1(1) — two versions (original + amendment)
+    const s1_1 = db
+      .prepare("SELECT id FROM legal_provisions WHERE document_id = 'ukpga-2018-12' AND provision_ref = 's1(1)'")
+      .get() as { id: number };
+
+    insertVersion.run(
+      s1_1.id,
+      'Original overview text from 2018 enactment.',
+      '2018-05-25',
+      '2024-06-01',
+      '2026-01-01T00:00:00Z',
+      'Initial enactment of DPA 2018',
+      null,
+      'https://www.legislation.gov.uk/ukpga/2018/12/section/1/enacted',
+    );
+    insertVersion.run(
+      s1_1.id,
+      'This Act provides an overview of data protection law and supplements the GDPR.',
+      '2024-06-01',
+      null,
+      '2026-02-01T00:00:00Z',
+      'Minor editorial amendment to align with retained EU law terminology',
+      '--- a/DPA_2018_s1_1\n+++ b/DPA_2018_s1_1\n@@ -1,1 +1,1 @@\n-Original overview text from 2018 enactment.\n+This Act provides an overview of data protection law and supplements the GDPR.',
+      'https://www.legislation.gov.uk/ukpga/2018/12/section/1',
+    );
+
+    // CMA 1990 s1(1) — single version (no amendments)
+    const cma_s1 = db
+      .prepare("SELECT id FROM legal_provisions WHERE document_id = 'ukpga-1990-18' AND provision_ref = 's1(1)'")
+      .get() as { id: number };
+
+    insertVersion.run(
+      cma_s1.id,
+      'A person is guilty if they cause a computer to perform a function with intent to secure unauthorised access.',
+      '1990-08-29',
+      null,
+      '2026-01-15T00:00:00Z',
+      'Initial enactment',
+      null,
+      'https://www.legislation.gov.uk/ukpga/1990/18/section/1',
+    );
   })();
 
   tempDbMeta.set(db, { tempDir });

@@ -25,6 +25,14 @@ import { getProvisionEUBasis, GetProvisionEUBasisInput } from './get-provision-e
 import { validateEUCompliance, ValidateEUComplianceInput } from './validate-eu-compliance.js';
 import { getAbout, type AboutContext } from './about.js';
 export type { AboutContext } from './about.js';
+import {
+  getProvisionHistory,
+  diffProvision,
+  getRecentChanges,
+  type GetProvisionHistoryInput,
+  type DiffProvisionInput,
+  type GetRecentChangesInput,
+} from './version-tracking.js';
 
 const ABOUT_TOOL: Tool = {
   name: 'about',
@@ -340,6 +348,83 @@ export const TOOLS: Tool[] = [
       required: ['document_id'],
     },
   },
+  // ── Premium tools (version tracking) ──────────────────────────────────────
+  {
+    name: 'get_provision_history',
+    description:
+      'Returns the full version timeline for a specific provision of a UK statute. ' +
+      'Shows when the provision was enacted, amended, and what changed at each version. ' +
+      'Premium feature — requires Ansvar Intelligence Portal.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        document_id: {
+          type: 'string',
+          description: 'Statute identifier (e.g., "ukpga-2018-12") or title (e.g., "Data Protection Act 2018")',
+        },
+        provision_ref: {
+          type: 'string',
+          description: 'Provision reference (e.g., "s1(1)", "s3")',
+        },
+      },
+      required: ['document_id', 'provision_ref'],
+    },
+  },
+  {
+    name: 'diff_provision',
+    description:
+      'Shows what changed in a UK statute provision between two dates. ' +
+      'Returns a unified diff and an AI-generated change summary. ' +
+      'Premium feature — requires Ansvar Intelligence Portal.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        document_id: {
+          type: 'string',
+          description: 'Statute identifier (e.g., "ukpga-2018-12") or title',
+        },
+        provision_ref: {
+          type: 'string',
+          description: 'Provision reference (e.g., "s1(1)", "s3")',
+        },
+        from_date: {
+          type: 'string',
+          description: 'Start date in ISO format (e.g., "2018-05-25")',
+        },
+        to_date: {
+          type: 'string',
+          description: 'End date in ISO format (defaults to today)',
+        },
+      },
+      required: ['document_id', 'provision_ref', 'from_date'],
+    },
+  },
+  {
+    name: 'get_recent_changes',
+    description:
+      'Lists all UK statute provisions that changed since a given date. ' +
+      'Useful for regulatory change monitoring and compliance updates. ' +
+      'Premium feature — requires Ansvar Intelligence Portal.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        since: {
+          type: 'string',
+          description: 'ISO date to look back from (e.g., "2024-01-01")',
+        },
+        document_id: {
+          type: 'string',
+          description: 'Optional: filter to a specific statute',
+        },
+        limit: {
+          type: 'number',
+          description: 'Max results (default: 50, max: 200)',
+          default: 50,
+        },
+      },
+      required: ['since'],
+    },
+  },
 ];
 
 export function buildTools(context?: AboutContext): Tool[] {
@@ -399,6 +484,15 @@ export function registerTools(
           break;
         case 'validate_eu_compliance':
           result = await validateEUCompliance(db, args as unknown as ValidateEUComplianceInput);
+          break;
+        case 'get_provision_history':
+          result = await getProvisionHistory(db, args as unknown as GetProvisionHistoryInput);
+          break;
+        case 'diff_provision':
+          result = await diffProvision(db, args as unknown as DiffProvisionInput);
+          break;
+        case 'get_recent_changes':
+          result = await getRecentChanges(db, args as unknown as GetRecentChangesInput);
           break;
         case 'about':
           if (context) {
