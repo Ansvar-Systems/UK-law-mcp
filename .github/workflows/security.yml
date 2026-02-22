@@ -2,9 +2,9 @@ name: Security Scanning (6-Layer)
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   schedule:
     - cron: '0 4 * * 1' # Weekly Monday 04:00 UTC
   workflow_dispatch:

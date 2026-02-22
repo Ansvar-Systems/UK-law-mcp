@@ -1,12 +1,14 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.Ansvar-Systems/UK-law-mcp",
-  "description": "UK legislation: 3,244 acts, 512K provisions. Search, cite, validate, EU cross-refs.",
+  "name": "eu.ansvar/uk-law-mcp",
+  "description": "UK legislation via MCP \u2014 full-text search across statutes and provisions",
   "repository": {
     "url": "https://github.com/Ansvar-Systems/UK-law-mcp",
     "source": "github"
   },
+  "homepage": "https://ansvar.eu",
   "version": "1.0.0",
+  "license": "Apache-2.0",
   "packages": [
     {
       "registryType": "npm",
@@ -14,9 +16,7 @@
       "version": "1.0.0",
       "transport": {
         "type": "stdio"
-      },
-      "runtimeHint": "node",
-      "environmentVariables": []
+      }
     }
   ]
 }
