@@ -1,8 +1,8 @@
 {
   "name": "@ansvar/uk-law-mcp",
   "mcpName": "eu.ansvar/uk-law-mcp",
-  "version": "1.0.0",
-  "description": "UK Law MCP \u2014 English legislation via Model Context Protocol",
+  "version": "1.0.1",
+  "description": "UK Law MCP — English legislation via Model Context Protocol",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
