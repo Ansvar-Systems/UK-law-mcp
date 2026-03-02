@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const SERVER_NAME = 'uk-legal-citations';
+const SERVER_NAME = 'uk-law-mcp';
 const SERVER_VERSION = '1.0.0';
 const REPO_URL = 'https://github.com/Ansvar-Systems/UK-law-mcp';
 const FRESHNESS_MAX_DAYS = 30;

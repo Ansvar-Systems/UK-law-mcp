@@ -9,13 +9,17 @@ export type Capability =
   | 'core_legislation'
   | 'eu_references'
   | 'case_law'
-  | 'preparatory_works';
+  | 'preparatory_works'
+  | 'version_tracking'
+  | 'change_diffs';
 
 const TABLE_MAP: Record<Capability, string[]> = {
   core_legislation: ['legal_documents', 'legal_provisions', 'provisions_fts'],
   eu_references: ['eu_documents', 'eu_references'],
   case_law: ['case_law'],
   preparatory_works: ['preparatory_works'],
+  version_tracking: ['provision_versions'],
+  change_diffs: ['provision_versions'],
 };
 
 export function detectCapabilities(db: InstanceType<typeof Database>): Set<Capability> {

@@ -6,12 +6,17 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: vercel-deploy
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
 
     env:

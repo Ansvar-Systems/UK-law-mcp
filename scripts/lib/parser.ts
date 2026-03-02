@@ -121,10 +121,39 @@ export interface ParsedAct {
 }
 
 /**
+ * Pre-process AKN XML to flatten inline markup elements into plain text.
+ *
+ * legislation.gov.uk AKN uses inline elements for amendments and cross-references:
+ *   <p>Most processing is subject to the <ins ...>UK GDPR</ins>.</p>
+ *   <p>Data protection <ref href="...">GDPR</ref> applies.</p>
+ *
+ * fast-xml-parser cannot preserve mixed-content ordering, so inline elements
+ * get displaced (their text prepended/appended to the parent's text).
+ * We flatten them to plain text before parsing, preserving only their text content.
+ *
+ * Inline elements stripped:
+ *   - <ref>: cross-reference links
+ *   - <ins>: inserted text (amendments)
+ *   - <del>: deleted text (amendments)
+ *   - <noteRef>: commentary note references (self-closing, stripped entirely)
+ *   - <marker>: legislative markers (self-closing, stripped entirely)
+ *   - <authorialNote>: editorial notes
+ */
+function flattenInlineElements(xml: string): string {
+  return xml
+    // Self-closing elements: strip entirely (no text content)
+    .replace(/<(?:noteRef|marker|ref)\b[^>]*\/>/g, '')
+    // Paired elements: keep only their text content
+    .replace(/<(?:ins|del|ref|authorialNote)\b[^>]*>([\s\S]*?)<\/(?:ins|del|ref|authorialNote)>/g, '$1')
+    // Nested noteRef inside ins/del that survived the first pass
+    .replace(/<noteRef\b[^>]*\/>/g, '');
+}
+
+/**
  * Parse an Akoma Ntoso XML document into a structured act with provisions.
  */
 export function parseAknXml(xml: string, year: number, actNumber: number, actTitle: string): ParsedAct {
-  const parsed = parser.parse(xml);
+  const parsed = parser.parse(flattenInlineElements(xml));
 
   // Navigate to the body — AKN structure: akomaNtoso > act > body
   const akomaNtoso = parsed.akomaNtoso ?? parsed['akomaNtoso'] ?? parsed;
