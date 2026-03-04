@@ -10,12 +10,13 @@ import https from 'https';
 import type { IncomingMessage } from 'http';
 
 import { registerTools } from '../src/tools/registry.js';
+import type { AboutContext } from '../src/tools/registry.js';
 
 // ---------------------------------------------------------------------------
 // Server identity
 // ---------------------------------------------------------------------------
 
-const SERVER_NAME = 'uk-legal-citations';
+const SERVER_NAME = 'uk-law-mcp';
 const SERVER_VERSION = '1.0.0';
 
 // ---------------------------------------------------------------------------
@@ -175,7 +176,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { capabilities: { tools: {} } }
     );
 
-    registerTools(server, database);
+    // Build lightweight about context from DB metadata (no file hashing)
+    let fingerprint = 'http-runtime';
+    let dbBuilt = 'unknown';
+    try {
+      const row = database.prepare("SELECT value FROM db_metadata WHERE key = 'built_at'").get() as { value: string } | undefined;
+      if (row) dbBuilt = row.value;
+    } catch { /* ignore */ }
+    const aboutContext: AboutContext = { version: SERVER_VERSION, fingerprint, dbBuilt };
+
+    registerTools(server, database, aboutContext);
 
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

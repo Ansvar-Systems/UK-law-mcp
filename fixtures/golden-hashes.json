@@ -28,6 +28,22 @@
       "selector_hint": "Contents and overview",
       "expected_sha256": "COMPUTE_ON_FIRST_RUN",
       "expected_snippet": "Online Safety Act 2023"
+    },
+    {
+      "id": "uk-hash-004",
+      "description": "Investigatory Powers Act 2016 overview page",
+      "upstream_url": "https://www.legislation.gov.uk/ukpga/2016/25/contents",
+      "selector_hint": "Contents and overview",
+      "expected_sha256": "COMPUTE_ON_FIRST_RUN",
+      "expected_snippet": "Investigatory Powers Act 2016"
+    },
+    {
+      "id": "uk-hash-005",
+      "description": "Network and Information Systems Regulations 2018 overview page",
+      "upstream_url": "https://www.legislation.gov.uk/uksi/2018/506/contents",
+      "selector_hint": "Contents and overview",
+      "expected_sha256": "COMPUTE_ON_FIRST_RUN",
+      "expected_snippet": "Network and Information Systems Regulations 2018"
     }
   ]
 }

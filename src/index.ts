@@ -19,7 +19,7 @@ import { detectCapabilities, readDbMetadata } from './capabilities.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const SERVER_NAME = 'uk-legal-citations';
+const SERVER_NAME = 'uk-law-mcp';
 const SERVER_VERSION = '1.0.0';
 const DB_ENV_VAR = 'UK_LAW_DB_PATH';
 

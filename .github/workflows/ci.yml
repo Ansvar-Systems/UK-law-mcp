@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - main
+      - dev
       - 'feature/*'
       - 'fix/*'
   pull_request:
     branches:
       - main
+      - dev
   schedule:
     - cron: '0 6 * * 1'
 
@@ -22,6 +24,7 @@ permissions:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         node-version: [20, 22]

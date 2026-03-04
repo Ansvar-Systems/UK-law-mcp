@@ -559,7 +559,7 @@ function buildDatabase(): void {
               ref.year,
               ref.number,
               ref.community,
-              null,
+              shortName, // title (was null — must match short_name as minimum)
               shortName,
               eurLexUrl,
               'Auto-extracted from UK statute text',
