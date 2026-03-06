@@ -148,6 +148,11 @@ export function resolveDocumentId(
   // Step 4 — Exact title match (case-insensitive)
   // -----------------------------------------------------------------------
   const normalized = normalizeActTitle(trimmed);
+  // Also keep the raw (non-normalized) form for DB titles stored WITHOUT the
+  // "Act, YYYY" comma — e.g. "Data Protection Act 2018" vs "Data Protection
+  // Act, 2018". When the two forms differ we try both in every LIKE step.
+  const rawTrimmed = trimmed;
+  const normalizedDiffers = normalized !== rawTrimmed;
 
   // 4a: exact match on normalised input
   const exactTitle = db.prepare(
@@ -155,19 +160,32 @@ export function resolveDocumentId(
   ).get(normalized) as { id: string } | undefined;
   if (exactTitle) return exactTitle.id;
 
+  // 4a-raw: exact match on the original (un-normalized) input
+  if (normalizedDiffers) {
+    const exactTitleRaw = db.prepare(
+      'SELECT id FROM legal_documents WHERE LOWER(title) = LOWER(?)',
+    ).get(rawTrimmed) as { id: string } | undefined;
+    if (exactTitleRaw) return exactTitleRaw.id;
+  }
+
   // 4b: try with trailing year stripped from stored titles
   //     e.g. input "Data Protection Act" should match "Data Protection Act, 2019"
   const docs = getAllDocs(db);
   const lowerNormalized = normalized.toLowerCase();
+  const lowerRaw = rawTrimmed.toLowerCase();
   for (const doc of docs) {
     const storedBase = doc.title.replace(/,?\s*\d{4}\s*$/, '').toLowerCase();
     if (storedBase === lowerNormalized) return doc.id;
+    // Also compare against raw (no-comma) form
+    if (normalizedDiffers && storedBase === lowerRaw) return doc.id;
   }
 
   // -----------------------------------------------------------------------
   // Step 5 — Shortest LIKE match (case-sensitive on title)
   // -----------------------------------------------------------------------
-  const likeMatches = docs.filter(d => d.title.includes(normalized));
+  const likeMatches = docs.filter(
+    d => d.title.includes(normalized) || (normalizedDiffers && d.title.includes(rawTrimmed)),
+  );
   if (likeMatches.length > 0) {
     likeMatches.sort((a, b) => a.title.length - b.title.length);
     return likeMatches[0]!.id;
@@ -177,7 +195,8 @@ export function resolveDocumentId(
   // Step 6 — Case-insensitive shortest LIKE on title
   // -----------------------------------------------------------------------
   const lowerLikeMatches = docs.filter(
-    d => d.title.toLowerCase().includes(lowerNormalized),
+    d => d.title.toLowerCase().includes(lowerNormalized) ||
+         (normalizedDiffers && d.title.toLowerCase().includes(lowerRaw)),
   );
   if (lowerLikeMatches.length > 0) {
     lowerLikeMatches.sort((a, b) => a.title.length - b.title.length);
