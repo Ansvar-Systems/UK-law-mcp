@@ -6,6 +6,7 @@ import type { Database } from '@ansvar/mcp-sqlite';
 import { resolveExistingStatuteId } from '../utils/statute-id.js';
 import { generateResponseMetadata, type ToolResponse } from '../utils/metadata.js';
 import { buildProvisionCitation } from '../utils/citation.js';
+import type { CitationMetadata } from '../utils/citation.js';
 
 export interface GetProvisionInput {
   document_id: string;
@@ -25,6 +26,8 @@ export interface ProvisionResult {
   section: string;
   title: string | null;
   content: string;
+  _citation?: CitationMetadata;
+
 }
 
 interface ProvisionRow {
