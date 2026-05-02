@@ -2,15 +2,14 @@
   "name": "@ansvar/uk-law-mcp",
   "mcpName": "eu.ansvar/uk-law-mcp",
   "version": "1.0.2",
-  "description": "UK Law MCP — English legislation via Model Context Protocol",
+  "description": "UK Law MCP \u2014 English legislation via Model Context Protocol",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
     "uk-law-mcp": "dist/index.js"
   },
   "files": [
-    "dist",
-    "data/database.db"
+    "dist"
   ],
   "scripts": {
     "build": "tsc",
@@ -72,7 +71,7 @@
     "access": "public"
   },
   "overrides": {
-    "path-to-regexp": "^8.0.0",
+    "path-to-regexp": "^8.4.0",
     "undici": "^7.0.0",
     "ajv": "^8.18.0"
   }
