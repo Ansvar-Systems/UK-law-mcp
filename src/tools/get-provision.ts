@@ -5,6 +5,7 @@
 import type { Database } from '@ansvar/mcp-sqlite';
 import { resolveExistingStatuteId } from '../utils/statute-id.js';
 import { generateResponseMetadata, type ToolResponse } from '../utils/metadata.js';
+import { buildProvisionCitation, type CitationMetadata } from '../utils/citation.js';
 
 export interface GetProvisionInput {
   document_id: string;
@@ -24,6 +25,7 @@ export interface ProvisionResult {
   section: string;
   title: string | null;
   content: string;
+  _citation?: CitationMetadata;
 }
 
 interface ProvisionRow {
@@ -116,7 +118,18 @@ export async function getProvision(
   }
 
   return {
-    results: row,
+    results: {
+      ...row,
+      _citation: buildProvisionCitation(
+        row.document_id,
+        row.document_title || '',
+        row.provision_ref || '',
+        input.document_id,
+        input.provision_ref ?? input.section ?? '',
+        null,
+        null,
+      ),
+    },
     _metadata: generateResponseMetadata(db)
   };
 }

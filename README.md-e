@@ -39,12 +39,12 @@ This MCP server makes UK law **searchable, cross-referenceable, and AI-readable*
 
 > Connect directly to the hosted version -- zero dependencies, nothing to install.
 
-**Endpoint:** `https://mcp.ansvar.eu/law-gb/mcp`
+**Endpoint:** `https://uk-law-mcp.vercel.app/mcp`
 
 | Client | How to Connect |
 |--------|---------------|
 | **Claude.ai** | Settings > Connectors > Add Integration > paste URL |
-| **Claude Code** | `claude mcp add uk-law --transport http https://mcp.ansvar.eu/law-gb/mcp` |
+| **Claude Code** | `claude mcp add uk-law --transport http https://uk-law-mcp.vercel.app/mcp` |
 | **Claude Desktop** | Add to config (see below) |
 | **GitHub Copilot** | Add to VS Code settings (see below) |
 
@@ -55,7 +55,7 @@ This MCP server makes UK law **searchable, cross-referenceable, and AI-readable*
   "mcpServers": {
     "uk-law": {
       "type": "url",
-      "url": "https://mcp.ansvar.eu/law-gb/mcp"
+      "url": "https://uk-law-mcp.vercel.app/mcp"
     }
   }
 }
@@ -68,7 +68,7 @@ This MCP server makes UK law **searchable, cross-referenceable, and AI-readable*
   "github.copilot.chat.mcp.servers": {
     "uk-law": {
       "type": "http",
-      "url": "https://mcp.ansvar.eu/law-gb/mcp"
+      "url": "https://uk-law-mcp.vercel.app/mcp"
     }
   }
 }
