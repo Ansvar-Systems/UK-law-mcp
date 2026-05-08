@@ -36,6 +36,7 @@ export function getAbout(db: InstanceType<typeof Database>, context: AboutContex
 
   return {
     name: 'UK Law MCP',
+    package_name: '@ansvar/uk-law-mcp',
     version: context.version,
     jurisdiction: 'GB',
     description: 'UK Law MCP — legislation via Model Context Protocol',
