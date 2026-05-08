@@ -11,6 +11,7 @@
 import Database from 'better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as zlib from 'zlib';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -18,6 +19,7 @@ const __dirname = path.dirname(__filename);
 
 const SEED_DIR = path.resolve(__dirname, '../data/seed');
 const DB_PATH = path.resolve(__dirname, '../data/database.db');
+const DB_GZ_PATH = path.resolve(__dirname, '../data/database.db.gz');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Seed file types
@@ -419,15 +421,28 @@ function extractEuReferences(text: string): ExtractedEUReference[] {
 function buildDatabase(): void {
   console.log('Building UK Law MCP database...\n');
 
+  const dataDir = path.dirname(DB_PATH);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
+  // Fast path: if a pre-built database ships in the repo as database.db.gz
+  // and there is no seed directory (the production data shape — seed JSON
+  // is too large to commit), just unpack the artifact and exit.
+  if (!fs.existsSync(SEED_DIR) && fs.existsSync(DB_GZ_PATH)) {
+    console.log(`Unpacking ${path.basename(DB_GZ_PATH)} → ${path.basename(DB_PATH)}...`);
+    const gz = fs.readFileSync(DB_GZ_PATH);
+    const raw = zlib.gunzipSync(gz);
+    fs.writeFileSync(DB_PATH, raw);
+    const size = fs.statSync(DB_PATH).size;
+    console.log(`Unpacked: ${DB_PATH} (${(size / 1024 / 1024).toFixed(1)} MB)`);
+    return;
+  }
+
   // Delete existing database
   if (fs.existsSync(DB_PATH)) {
     fs.unlinkSync(DB_PATH);
     console.log('  Deleted existing database.\n');
-  }
-
-  const dataDir = path.dirname(DB_PATH);
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
   }
 
   const db = new Database(DB_PATH);
