@@ -365,7 +365,7 @@ Apache License 2.0. See [LICENSE](./LICENSE) for details.
 
 ### Data Licenses
 
-- **Statutes:** The National Archives (Open Parliament Licence / Open Government Licence)
+- **Statutes & Legislation:** `OGL-3.0` — UK Crown copyright under CDPA 1988 ss. 163–164 with an explicit Open Government Licence v3.0 grant on [legislation.gov.uk](https://www.legislation.gov.uk). UK is NOT a statutory-PD regime; the open-licence grant is the operative permission. Commercial reuse permitted with attribution; no share-alike. Required attribution text: "Contains public sector information licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)." UK Parliamentary content (Hansard, bills) is Parliamentary copyright (not Crown copyright) and falls under the separate Open Parliament Licence v3.0. Verified 2026-05-17.
 - **Case Law:** BAILII (used under terms of service, premium tier)
 - **EU Metadata:** EUR-Lex (EU public domain)
 
