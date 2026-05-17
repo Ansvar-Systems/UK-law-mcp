@@ -12,9 +12,9 @@ sources:
     update_frequency: 'daily'
     last_ingested: '2026-02-16'
     license_or_terms:
-      type: 'Open Government Licence v3.0'
+      type: 'OGL-3.0'
       url: 'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/'
-      summary: 'Free to copy, publish, distribute, and adapt with attribution'
+      summary: 'Open Government Licence v3.0 grant on legislation.gov.uk: commercial reuse permitted with attribution; no share-alike. CDPA 1988 ss. 163–164 keep Crown copyright on Acts (50-year term), so the OGL-3.0 grant is the operative permission for downstream reuse — UK is NOT a statutory-PD regime. Attribution text: "Contains public sector information licensed under the Open Government Licence v3.0." Verified 2026-05-17.'
     coverage:
       scope: 'UK Acts of Parliament, Statutory Instruments, retained EU law'
       limitations: 'Cybersecurity and data protection scope only for initial release'
