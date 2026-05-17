@@ -1,8 +1,54 @@
 # UK Law MCP Server
 
+<!-- ANSVAR-CTA-BEGIN -->
+> ### ▶ Try this MCP instantly via Ansvar Gateway
+> **50 free queries/day · no card required · OAuth signup at [ansvar.eu/gateway](https://ansvar.eu/gateway)**
+>
+> One endpoint, one OAuth signup, access from any MCP-compatible client.
+
+### Connect
+
+**Claude Code** (one line):
+
+```bash
+claude mcp add ansvar --transport http https://gateway.ansvar.eu/mcp
+```
+
+**Claude Desktop / Cursor** — add to `claude_desktop_config.json` (or `mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "ansvar": {
+      "type": "url",
+      "url": "https://gateway.ansvar.eu/mcp"
+    }
+  }
+}
+```
+
+**Claude.ai** — Settings → Connectors → Add custom connector → paste `https://gateway.ansvar.eu/mcp`
+
+First request opens an OAuth flow at [ansvar.eu/gateway](https://ansvar.eu/gateway). After signup, your client is bound to your account; tier (free / premium / team / company) determines fan-out, quota, and which downstream MCPs are reachable.
+
+---
+
+## Self-host this MCP
+
+You can also clone this repo and build the corpus yourself. The schema,
+fetcher, and tool implementations all live here. What is not in the repo is
+the pre-built database — TDM and standards-licensing constraints on the
+upstream sources mean we host the corpus on Ansvar infrastructure rather
+than redistribute it as a public artifact.
+
+Build your own: run this repo's ingestion script (entry-point varies per
+repo — typically `scripts/ingest.sh`, `npm run ingest`, or `make ingest`;
+check the repo root).
+<!-- ANSVAR-CTA-END -->
+
+
 **The legislation.gov.uk alternative for the AI age.**
 
-[![npm version](https://badge.fury.io/js/@ansvar%2Fuk-law-mcp.svg)](https://www.npmjs.com/package/@ansvar/uk-law-mcp)
 [![MCP Registry](https://img.shields.io/badge/MCP-Registry-blue)](https://registry.modelcontextprotocol.io)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![GitHub stars](https://img.shields.io/github/stars/Ansvar-Systems/UK-law-mcp?style=social)](https://github.com/Ansvar-Systems/UK-law-mcp)
@@ -32,82 +78,6 @@ UK legal research is scattered across legislation.gov.uk, BAILII, and EUR-Lex re
 This MCP server makes UK law **searchable, cross-referenceable, and AI-readable**.
 
 ---
-
-## Quick Start
-
-### Use Remotely (No Install Needed)
-
-> Connect directly to the hosted version -- zero dependencies, nothing to install.
-
-**Endpoint:** `https://mcp.ansvar.eu/law-gb/mcp`
-
-| Client | How to Connect |
-|--------|---------------|
-| **Claude.ai** | Settings > Connectors > Add Integration > paste URL |
-| **Claude Code** | `claude mcp add uk-law --transport http https://mcp.ansvar.eu/law-gb/mcp` |
-| **Claude Desktop** | Add to config (see below) |
-| **GitHub Copilot** | Add to VS Code settings (see below) |
-
-**Claude Desktop** -- add to `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "uk-law": {
-      "type": "url",
-      "url": "https://mcp.ansvar.eu/law-gb/mcp"
-    }
-  }
-}
-```
-
-**GitHub Copilot** -- add to VS Code `settings.json`:
-
-```json
-{
-  "github.copilot.chat.mcp.servers": {
-    "uk-law": {
-      "type": "http",
-      "url": "https://mcp.ansvar.eu/law-gb/mcp"
-    }
-  }
-}
-```
-
-### Use Locally (npm)
-
-```bash
-npx @ansvar/uk-law-mcp
-```
-
-**Claude Desktop** -- add to `claude_desktop_config.json`:
-
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "uk-law": {
-      "command": "npx",
-      "args": ["-y", "@ansvar/uk-law-mcp"]
-    }
-  }
-}
-```
-
-**Cursor / VS Code:**
-
-```json
-{
-  "mcp.servers": {
-    "uk-law": {
-      "command": "npx",
-      "args": ["-y", "@ansvar/uk-law-mcp"]
-    }
-  }
-}
-```
 
 ## Example Queries
 
@@ -341,32 +311,9 @@ npm run check-updates             # Check for amendments and new Acts
 
 ---
 
-## Related Projects: Complete Compliance Suite
+## More Ansvar MCPs
 
-This server is part of **Ansvar's Compliance Suite** -- MCP servers that work together for end-to-end compliance coverage:
-
-### [@ansvar/eu-regulations-mcp](https://github.com/Ansvar-Systems/EU_compliance_MCP)
-**Query 49 EU regulations directly from Claude** -- GDPR, AI Act, DORA, NIS2, MiFID II, eIDAS, and more. Full regulatory text with article-level search. `npx @ansvar/eu-regulations-mcp`
-
-### @ansvar/uk-law-mcp (This Project)
-**Query 3,241 UK statutes directly from Claude** -- UK GDPR, DPA 2018, Computer Misuse Act, Employment Rights Act, and more. Full provision text with EU derivation cross-references. `npx @ansvar/uk-law-mcp`
-
-### [@ansvar/us-regulations-mcp](https://github.com/Ansvar-Systems/US_Compliance_MCP)
-**Query US federal and state compliance laws** -- HIPAA, CCPA, SOX, GLBA, FERPA, and more. `npx @ansvar/us-regulations-mcp`
-
-### [@ansvar/security-controls-mcp](https://github.com/Ansvar-Systems/security-controls-mcp)
-**Query 261 security frameworks** -- ISO 27001, NIST CSF, SOC 2, CIS Controls, SCF, and more. `npx @ansvar/security-controls-mcp`
-
-### [@ansvar/automotive-cybersecurity-mcp](https://github.com/Ansvar-Systems/Automotive-MCP)
-**Query UNECE R155/R156 and ISO 21434** -- Automotive cybersecurity compliance. `npx @ansvar/automotive-cybersecurity-mcp`
-
-### [@ansvar/sanctions-mcp](https://github.com/Ansvar-Systems/Sanctions-MCP)
-**Offline-capable sanctions screening** -- OFAC, EU, UN sanctions lists. `pip install ansvar-sanctions-mcp`
-
-**70+ national law MCPs** covering Australia, Brazil, Canada, Chile, Denmark, Finland, France, Germany, Ireland, Italy, Japan, Netherlands, Norway, Peru, Sweden, Switzerland, and more.
-
----
-
+Full fleet at [ansvar.eu/gateway](https://ansvar.eu/gateway).
 ## Contributing
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -385,7 +332,7 @@ Priority areas:
 - [x] Full corpus ingestion (3,241 statutes, 512,651 provisions)
 - [x] EU/international law alignment tools
 - [x] Vercel Streamable HTTP deployment
-- [x] npm package publication
+
 - [x] Daily freshness checks against legislation.gov.uk
 - [x] Premium case law (65,026 judgments)
 - [x] Premium preparatory works (3,838 documents)
