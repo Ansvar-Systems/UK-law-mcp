@@ -23,8 +23,84 @@ import { getUKImplementations, GetUKImplementationsInput } from './get-uk-implem
 import { searchEUImplementations, SearchEUImplementationsInput } from './search-eu-implementations.js';
 import { getProvisionEUBasis, GetProvisionEUBasisInput } from './get-provision-eu-basis.js';
 import { validateEUCompliance, ValidateEUComplianceInput } from './validate-eu-compliance.js';
+import { searchPreparatoryWorks, SearchPreparatoryWorksInput } from './search-preparatory-works.js';
+import { searchAgencyGuidance, SearchAgencyGuidanceInput } from './search-agency-guidance.js';
 import { getAbout, type AboutContext } from './about.js';
 export type { AboutContext } from './about.js';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Premium tier gating
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Premium tools are registered only when PREMIUM_ENABLED=true AND the premium
+// database is mounted (presence of the corresponding table is checked at
+// query time via SQLite). The container image always carries the premium
+// tool source code; activation is via env var + DB mount on the prod host.
+//
+// search_case_law is INTENTIONALLY NOT EXPOSED — the upstream source (TNA
+// Find Case Law, caselaw.nationalarchives.gov.uk) is Open Justice Licence
+// v2.0, which explicitly excludes computational analysis. Gateway FTS5 +
+// embeddings are precisely the use case OJL v2.0 was rewritten to exclude.
+// Routing it would create a licensing exposure mirroring the same class as
+// the british-financial-regulation FCA Handbook case. See
+// infrastructure/policy/at-risk-mcps.yml uk-law entry for the full reasoning.
+//
+// search_preparatory_works covers two row types in the preparatory_works
+// table (distinguished by `type` column): UK Parliament Bills (Open
+// Parliament Licence v3.0) and ParlaMint-GB House of Commons debates
+// (CC-BY-4.0). Both clear for commercial reuse.
+//
+// search_agency_guidance covers CMA + ICO enforcement decisions (OGL-3.0).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function isPremiumEnabled(): boolean {
+  return process.env.PREMIUM_ENABLED === 'true';
+}
+
+const PREMIUM_TOOLS: Tool[] = [
+  {
+    name: 'search_preparatory_works',
+    description:
+      'Search UK preparatory works — Parliament Bills (3,838+) and House of Commons debates (660,000+ ParlaMint utterances). ' +
+      'FTS5 with BM25 ranking. Use the `type` filter to scope to "bill" or "parliamentary_debate". ' +
+      'Sources: bills-api.parliament.uk (Open Parliament Licence v3.0) and ParlaMint-GB CC-BY-4.0. ' +
+      'Premium tier. Default limit 10 (max 50).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', minLength: 1, description: 'Search query in English. Supports FTS5 syntax (AND, OR, NOT, "phrase", prefix*).' },
+        type: { type: 'string', enum: ['bill', 'parliamentary_debate'], description: 'Filter by row type. Bills are from UK Parliament; parliamentary_debate is from ParlaMint-GB House of Commons corpus.' },
+        session: { type: 'string', description: 'Filter by parliamentary session ID (e.g., "session-39").' },
+        date_from: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$', description: 'Filter by date_introduced >= YYYY-MM-DD.' },
+        date_to: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$', description: 'Filter by date_introduced <= YYYY-MM-DD.' },
+        limit: { type: 'number', default: 10, minimum: 1, maximum: 50, description: 'Maximum results to return (default 10, max 50).' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'search_agency_guidance',
+    description:
+      'Search UK regulatory agency enforcement decisions and guidance. ' +
+      'Coverage: CMA (Competition and Markets Authority — enforcement decisions, market studies, merger inquiries, CA98/civil cartel cases) and ' +
+      'ICO (Information Commissioner\'s Office — enforcement notices, monetary penalties, reprimands, DPIA guidance). ' +
+      'FTS5 with BM25 ranking. Use the `agency` filter to scope. Sources: www.gov.uk/cma and ico.org.uk (both Open Government Licence v3.0). ' +
+      'Note: the british-competition and british-data-protection sector MCPs cover overlapping data via the gateway sector-fleet path. ' +
+      'Premium tier. Default limit 10 (max 50).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', minLength: 1, description: 'Search query in English. Supports FTS5 syntax.' },
+        agency: { type: 'string', enum: ['cma', 'ico'], description: 'Filter by agency.' },
+        action_type: { type: 'string', description: 'Filter by action_type (e.g., "markets", "ca98-and-civil-cartels", "monetary-penalty", "reprimand").' },
+        date_from: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$', description: 'Filter by issued_date >= YYYY-MM-DD.' },
+        date_to: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$', description: 'Filter by issued_date <= YYYY-MM-DD.' },
+        limit: { type: 'number', default: 10, minimum: 1, maximum: 50, description: 'Maximum results to return (default 10, max 50).' },
+      },
+      required: ['query'],
+    },
+  },
+];
 
 const ABOUT_TOOL: Tool = {
   name: 'about',
@@ -343,7 +419,8 @@ export const TOOLS: Tool[] = [
 ];
 
 export function buildTools(context?: AboutContext): Tool[] {
-  return context ? [...TOOLS, ABOUT_TOOL] : TOOLS;
+  const baseTools = isPremiumEnabled() ? [...TOOLS, ...PREMIUM_TOOLS] : TOOLS;
+  return context ? [...baseTools, ABOUT_TOOL] : baseTools;
 }
 
 export function registerTools(
@@ -399,6 +476,24 @@ export function registerTools(
           break;
         case 'validate_eu_compliance':
           result = await validateEUCompliance(db, args as unknown as ValidateEUComplianceInput);
+          break;
+        case 'search_preparatory_works':
+          if (!isPremiumEnabled()) {
+            return {
+              content: [{ type: 'text', text: `Error: search_preparatory_works requires premium tier. Set PREMIUM_ENABLED=true and mount the premium database.` }],
+              isError: true,
+            };
+          }
+          result = await searchPreparatoryWorks(db, args as unknown as SearchPreparatoryWorksInput);
+          break;
+        case 'search_agency_guidance':
+          if (!isPremiumEnabled()) {
+            return {
+              content: [{ type: 'text', text: `Error: search_agency_guidance requires premium tier. Set PREMIUM_ENABLED=true and mount the premium database.` }],
+              isError: true,
+            };
+          }
+          result = await searchAgencyGuidance(db, args as unknown as SearchAgencyGuidanceInput);
           break;
         case 'about':
           if (context) {
