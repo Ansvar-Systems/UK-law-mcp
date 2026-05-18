@@ -28,14 +28,7 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs \
  && adduser -u 1001 -S nodejs -G nodejs
 
-# Per Phase B lint gate (spec §3.1.1): copy node_modules from the builder
-# stage rather than re-running `npm ci` in the runtime stage. The build
-# stage uses `npm rebuild better-sqlite3` to materialise the native binding
-# for build:db; re-running `npm ci --omit=dev --ignore-scripts` here strips
-# that binding and would break `Could not locate the bindings file` at tool
-# call time. Copying node_modules preserves the native binding intact and
-# then `npm prune --omit=dev` removes devDependencies (including the now-
-# unneeded better-sqlite3 which is only used during build:db).
+# Spec §3.1.1: copy node_modules from builder to preserve native bindings.
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --chown=nodejs:nodejs package*.json ./
 RUN npm prune --omit=dev && npm cache clean --force
